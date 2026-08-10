@@ -48,6 +48,31 @@ thread scheduling affects the exact ordering of operations.
 Both Join() calls ensured that the main thread waited for both drones
 before printing "All drones finished!".
 
+### Removing Join() with multiple drones
+
+After removing both Join() calls, the main thread printed
+"All drones finished!" immediately, before either drone had completed
+its route.
+
+The drones continued flying afterward.
+
+The experiment was run multiple times. The general progression was
+similar because Falcon-1 had a shorter delay than Raven-2, but the exact
+ordering of messages varied slightly between runs.
+
+For example, the order in which the launch messages appeared was not
+always the same as the timestamps themselves. Some messages also had
+nearly identical timestamps.
+
+This showed that console output from multiple threads can become
+interleaved and that the exact execution order should not be relied
+upon.
+
+Without Join(), the main thread has no synchronization point requiring
+it to wait for the drone threads. Therefore, "All drones finished!"
+does not actually mean that the drones have finished; it only means
+that the main thread reached that statement.
+
 ### Thoughts
 
 _To be filled in as we learn._

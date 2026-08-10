@@ -26,7 +26,4 @@ Thread ravenThread = new Thread(() =>
 falconThread.Start();
 ravenThread.Start();
 
-falconThread.Join();
-ravenThread.Join();
-
 Console.WriteLine("All drones finished!");
