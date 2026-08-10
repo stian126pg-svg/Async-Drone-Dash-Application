@@ -1,7 +1,5 @@
-﻿using AsyncDroneDash.Models;
+﻿using AsyncDroneDash.Utilities;
 
-DroneModel drone = new DroneModel("Falcon-1", 5, 500);
-
-Console.WriteLine($"Drone: {drone.Name}");
-Console.WriteLine($"Checkpoints: {drone.MaxCheckpoints}");
-Console.WriteLine($"Delay: {drone.DelayMs} ms");
+DroneLogger.Log("Control tower online.");
+DroneLogger.Log("Falcon-1 ready.");
+DroneLogger.Log("Falcon-2 ready.");
