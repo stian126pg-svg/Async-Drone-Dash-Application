@@ -15,7 +15,18 @@ The timestamp showed approximately one second between the messages.
 
 ### What happened when Join was removed?
 
-_To be filled in after the experiment._
+When `Thread.Join()` was removed, the main thread immediately printed
+"All drones finished!" before the drone had even started its route.
+
+The drone continued running afterward and completed all of its
+checkpoints.
+
+This demonstrated that `Thread.Start()` begins the thread independently
+of the main thread. Without `Join()`, the main thread does not wait for
+the drone thread to finish.
+
+The result can therefore be in an unexpected order because the threads
+are executing independently.
 
 ### Thoughts
 
