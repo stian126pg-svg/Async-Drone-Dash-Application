@@ -28,6 +28,26 @@ the drone thread to finish.
 The result can therefore be in an unexpected order because the threads
 are executing independently.
 
+### Multiple drones
+
+Two drones were started on separate threads. Falcon-1 had a delay of
+500 ms per checkpoint, while Raven-2 had a delay of 700 ms.
+
+The drones started almost simultaneously, and their console output was
+interleaved. Falcon-1 generally progressed faster because it had the
+shorter delay and ultimately landed first.
+
+However, the order of individual log messages was not completely
+predictable. Raven-2 printed its first checkpoint at essentially the
+same time as Falcon-1, and in some cases Raven-2's message appeared
+first.
+
+This demonstrated that the threads execute independently and that
+thread scheduling affects the exact ordering of operations.
+
+Both Join() calls ensured that the main thread waited for both drones
+before printing "All drones finished!".
+
 ### Thoughts
 
 _To be filled in as we learn._
