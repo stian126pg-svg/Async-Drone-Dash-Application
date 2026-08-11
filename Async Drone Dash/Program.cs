@@ -6,9 +6,24 @@ DroneModel falcon = new DroneModel(
     5,
     500);
 
+DroneModel raven = new DroneModel(
+    "Raven-2",
+    5,
+    700);
+
 AsyncDroneService service = new AsyncDroneService();
 
-await service.FlyDroneAsync(falcon);
+Task falconTask = service.FlyDroneAsync(falcon);
+Task ravenTask = service.FlyDroneAsync(raven);
 
-Console.WriteLine("Drone task finished!");
+try
+{
+    await Task.WhenAll(falconTask, ravenTask);
 
+    Console.WriteLine("All drones finished successfully!");
+}
+catch (InvalidOperationException exception)
+{
+    Console.WriteLine("A drone failed!");
+    Console.WriteLine($"Error: {exception.Message}");
+}

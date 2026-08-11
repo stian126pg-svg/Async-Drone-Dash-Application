@@ -151,9 +151,35 @@ be useful when several concurrent Tasks fail.
 The order of the reported exceptions should not be assumed to represent
 the exact chronological order in which the failures occurred.
 
+### Multiple drones with async/await
 
+Falcon-1 and Raven-2 were started as separate asynchronous operations
+and coordinated using await Task.WhenAll().
 
-## Part C – Async/Await
+Their checkpoint output overlapped, showing that both drone operations
+were making progress during the same period.
 
-### Initial observations
+Falcon-1 still completed first because it had the shorter delay, but
+the program did not continue past Task.WhenAll() until Raven-2 had also
+finished.
 
+Compared with Thread + Join, the async version required much less
+manual coordination code and was easier to read because the program
+focused on the operations being performed rather than directly managing
+threads.
+
+### Error propagation with async/await
+
+A simulated motor failure was added to Raven-2 at checkpoint 3.
+
+When Raven-2 threw an InvalidOperationException, its Task became faulted.
+Falcon-1 was not automatically cancelled and continued until it completed
+its route.
+
+await Task.WhenAll() did not continue normally because one of the Tasks
+had failed. After the remaining Task completed, the original
+InvalidOperationException was propagated back to the orchestration code.
+
+This differed from using Task.Wait(), where the failure was wrapped in
+an AggregateException. With await, the original exception was much easier
+to handle directly.

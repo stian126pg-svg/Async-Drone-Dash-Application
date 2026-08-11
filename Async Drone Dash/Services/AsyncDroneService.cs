@@ -13,6 +13,12 @@ public class AsyncDroneService
              checkpoint <= drone.MaxCheckpoints;
              checkpoint++)
         {
+            if (drone.Name == "Raven-2" && checkpoint == 3)
+            {
+                throw new InvalidOperationException(
+                    $"{drone.Name} suffered a motor failure at checkpoint {checkpoint}!");
+            }
+
             DroneLogger.Log(
                 $"{drone.Name} → checkpoint {checkpoint}");
 
