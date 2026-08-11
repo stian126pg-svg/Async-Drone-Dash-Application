@@ -76,3 +76,18 @@ that the main thread reached that statement.
 ### Thoughts
 
 _To be filled in as we learn._
+
+## Part B – Task + TaskCompletionSource
+
+### Initial observations
+
+Part B replaces the direct use of Thread.Join() with a Task that
+represents the completion of the drone's work.
+
+TaskCompletionSource is used to control when the Task completes.
+SetResult() is called when the drone successfully finishes its route,
+while SetException() can be used when the drone encounters an error.
+
+The initial implementation still uses a Thread to perform the actual
+work, but the TaskCompletionSource provides a Task-based way for other
+code to observe when the operation has completed.

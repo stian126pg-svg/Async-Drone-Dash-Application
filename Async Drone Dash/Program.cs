@@ -1,29 +1,15 @@
 ﻿using AsyncDroneDash.Models;
 using AsyncDroneDash.Services;
 
-DroneModel falcon = new DroneModel(
+DroneModel drone = new DroneModel(
     "Falcon-1",
     5,
     500);
 
-DroneModel raven = new DroneModel(
-    "Raven-2",
-    5,
-    700);
+TaskDroneService service = new TaskDroneService();
 
-ThreadRaceService service = new ThreadRaceService();
+Task droneTask = service.FlyDrone(drone);
 
-Thread falconThread = new Thread(() =>
-{
-    service.FlyDrone(falcon);
-});
+droneTask.Wait();
 
-Thread ravenThread = new Thread(() =>
-{
-    service.FlyDrone(raven);
-});
-
-falconThread.Start();
-ravenThread.Start();
-
-Console.WriteLine("All drones finished!");
+Console.WriteLine("Drone task finished!");
