@@ -77,6 +77,7 @@ that the main thread reached that statement.
 
 _To be filled in as we learn._
 
+
 ## Part B – Task + TaskCompletionSource
 
 ### Initial observations
@@ -91,3 +92,35 @@ while SetException() can be used when the drone encounters an error.
 The initial implementation still uses a Thread to perform the actual
 work, but the TaskCompletionSource provides a Task-based way for other
 code to observe when the operation has completed.
+
+### Task.WhenAll with multiple drones
+
+Two drone Tasks were started and combined with Task.WhenAll().
+
+Falcon-1 finished before Raven-2 because it had a shorter delay, but
+the combined Task did not complete until both drone Tasks were finished.
+
+This showed that Task.WhenAll() can be used to coordinate several
+independent operations without manually joining each thread.
+
+Compared with Thread.Join(), the code is beginning to focus more on
+waiting for work to complete rather than directly managing the threads
+performing that work.
+
+### Failure propagation with TaskCompletionSource
+
+A simulated motor failure was added to Raven-2 at checkpoint 3.
+
+When the exception was thrown, TaskDroneService caught it and passed it
+to TaskCompletionSource.SetException(). This caused Raven-2's Task to
+become faulted.
+
+Falcon-1 was not automatically stopped by Raven-2's failure and
+continued until it completed its route.
+
+Task.WhenAll() did not finish until the remaining Falcon-1 Task was also
+complete. The combined Task then completed in a faulted state.
+
+Because Program.cs used Task.Wait() without a try/catch, the failure was
+reported as an AggregateException and terminated the application. The
+original InvalidOperationException was visible as the inner exception.
