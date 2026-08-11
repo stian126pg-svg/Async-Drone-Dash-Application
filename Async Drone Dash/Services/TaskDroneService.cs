@@ -19,7 +19,8 @@ public class TaskDroneService
                      checkpoint <= drone.MaxCheckpoints;
                      checkpoint++)
                 {
-                    if (drone.Name == "Raven-2" && checkpoint == 3)
+                    if ((drone.Name == "Raven-2" && checkpoint == 3) ||
+                        (drone.Name == "Falcon-1" && checkpoint == 4))
                     {
                         throw new InvalidOperationException(
                             $"{drone.Name} suffered a motor failure at checkpoint {checkpoint}!");
