@@ -150,3 +150,10 @@ be useful when several concurrent Tasks fail.
 
 The order of the reported exceptions should not be assumed to represent
 the exact chronological order in which the failures occurred.
+
+
+
+## Part C – Async/Await
+
+### Initial observations
+
