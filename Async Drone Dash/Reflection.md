@@ -75,10 +75,6 @@ it to wait for the drone threads. Therefore, "All drones finished!"
 does not actually mean that the drones have finished; it only means
 that the main thread reached that statement.
 
-### Thoughts
-
-_To be filled in as we learn._
-
 
 
 ## Part B – Task + TaskCompletionSource
@@ -142,3 +138,15 @@ without terminating with an unhandled exception.
 This also showed that Tasks provide more information about the outcome
 of an operation than directly managing threads. A Task can represent
 successful completion, failure, or cancellation.
+
+### Multiple failures
+
+A second simulated motor failure was temporarily added so both drones
+would fail.
+
+Task.WhenAll() completed as faulted and AggregateException contained
+both original exceptions. This demonstrated why AggregateException can
+be useful when several concurrent Tasks fail.
+
+The order of the reported exceptions should not be assumed to represent
+the exact chronological order in which the failures occurred.
