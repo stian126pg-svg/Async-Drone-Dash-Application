@@ -183,3 +183,23 @@ InvalidOperationException was propagated back to the orchestration code.
 This differed from using Task.Wait(), where the failure was wrapped in
 an AggregateException. With await, the original exception was much easier
 to handle directly.
+
+### Comparison with Thread + Join
+
+The async/await version required less manual coordination than the
+Thread + Join version.
+
+With Thread, the program had to explicitly create threads, start them,
+and call Join() to wait for completion.
+
+With async/await, each drone operation returned a Task, and
+Task.WhenAll() was used to coordinate them. This made the orchestration
+code shorter and easier to follow.
+
+Error handling was also easier with async/await because exceptions
+propagated through the Task and could be handled with a normal try/catch
+around await Task.WhenAll().
+
+Overall, the async version focused more on the work being performed and
+less on directly managing threads, which should make the code easier to
+maintain.
