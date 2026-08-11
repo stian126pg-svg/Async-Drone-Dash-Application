@@ -1,5 +1,7 @@
 # Reflection – Async Drone Dash
 
+
+
 ## Part A – Thread + Join
 
 ### Initial observations
@@ -78,6 +80,7 @@ that the main thread reached that statement.
 _To be filled in as we learn._
 
 
+
 ## Part B – Task + TaskCompletionSource
 
 ### Initial observations
@@ -124,3 +127,18 @@ complete. The combined Task then completed in a faulted state.
 Because Program.cs used Task.Wait() without a try/catch, the failure was
 reported as an AggregateException and terminated the application. The
 original InvalidOperationException was visible as the inner exception.
+
+### Handling Task failures
+
+The call to Task.WhenAll() was wrapped in a try/catch.
+
+Because the program currently uses Task.Wait(), failures are exposed as
+an AggregateException. The InnerExceptions collection can be inspected
+to retrieve the original error from the failed drone.
+
+This allowed the application to report Raven-2's simulated motor failure
+without terminating with an unhandled exception.
+
+This also showed that Tasks provide more information about the outcome
+of an operation than directly managing threads. A Task can represent
+successful completion, failure, or cancellation.

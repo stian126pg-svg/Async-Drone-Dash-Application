@@ -18,6 +18,18 @@ Task ravenTask = service.FlyDrone(raven);
 
 Task allDrones = Task.WhenAll(falconTask, ravenTask);
 
-allDrones.Wait();
+try
+{
+    allDrones.Wait();
 
-Console.WriteLine("All drone tasks finished!");
+    Console.WriteLine("All drone tasks finished successfully!");
+}
+catch (AggregateException exception)
+{
+    Console.WriteLine("One or more drones failed!");
+
+    foreach (Exception innerException in exception.InnerExceptions)
+    {
+        Console.WriteLine($"Error: {innerException.Message}");
+    }
+}
