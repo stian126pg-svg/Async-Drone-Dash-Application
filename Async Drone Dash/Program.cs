@@ -17,10 +17,20 @@ HttpClient httpClient = new HttpClient
 ControlTowerClient towerClient =
     new ControlTowerClient(httpClient);
 
-string? weather =
-    await towerClient.GetWeatherAsync();
+Task<string?> weatherTask =
+    towerClient.GetWeatherAsync();
 
-Console.WriteLine($"Drone received weather: {weather}");
+Task<int?> routeTask =
+    towerClient.GetRouteAsync("Falcon-1");
+
+await Task.WhenAll(weatherTask, routeTask);
+
+string? weather = await weatherTask;
+int? checkpoints = await routeTask;
+
+Console.WriteLine();
+Console.WriteLine($"Weather: {weather}");
+Console.WriteLine($"Falcon-1 checkpoints: {checkpoints}");
 
 Console.WriteLine();
 Console.WriteLine("Press Enter to stop...");

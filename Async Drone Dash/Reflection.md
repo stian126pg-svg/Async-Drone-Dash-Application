@@ -203,3 +203,35 @@ around await Task.WhenAll().
 Overall, the async version focused more on the work being performed and
 less on directly managing threads, which should make the code easier to
 maintain.
+
+
+
+## Part C – Control Tower API
+
+### First asynchronous HTTP request
+
+A local Control Tower API was created using HttpListener. The first
+endpoint tested with HttpClient was `/weather`.
+
+The client used GetFromJsonAsync() to asynchronously request the weather
+and deserialize the JSON response into a C# object.
+
+The server included a random artificial delay between 200 and 1000 ms.
+Timestamps in the client output made this delay visible. While waiting
+for the HTTP response, the application used await rather than
+synchronously blocking a thread.
+
+A five-second HttpClient timeout was also configured so the client would
+not wait indefinitely if the Control Tower failed to respond.
+
+### Sequential vs concurrent HTTP calls
+
+The weather and route requests were first awaited sequentially, meaning
+the second request did not begin until the first had completed.
+
+They were then started together and coordinated with Task.WhenAll().
+Because the requests were independent, they could overlap while waiting
+for the server.
+
+This reduced the total waiting time to approximately the duration of the
+slowest request rather than the combined duration of both requests.
