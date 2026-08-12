@@ -276,3 +276,19 @@ crashing.
 The drone then kept its existing route and delay values. This allowed the
 simulation to continue even when the external service failed to respond in
 time.
+
+### Invalid drone parameters
+
+Validation was added before an asynchronous drone flight begins.
+
+A negative DelayMs produced an ArgumentOutOfRangeException with a clear
+error message, while an empty drone name produced an ArgumentException.
+
+The empty-name test also caused the Control Tower route endpoint to return
+HTTP 400 Bad Request before the drone flight was attempted.
+
+MaxCheckpoints < 0 also gave us the expected "Max checkpoints cannot be negative."
+Exact same pattern as DelayMs used here.
+
+These tests showed that invalid data should be rejected close to where it
+is used instead of relying on lower-level methods to fail unexpectedly.
