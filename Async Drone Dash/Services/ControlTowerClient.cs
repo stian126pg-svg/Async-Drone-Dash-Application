@@ -32,14 +32,37 @@ public class ControlTowerClient
         DroneLogger.Log(
             $"Requesting route for {droneName} from Control Tower...");
 
-        RouteResponse? response =
-            await _httpClient.GetFromJsonAsync<RouteResponse>(
-                $"route?drone={Uri.EscapeDataString(droneName)}");
+        try
+        {
+            HttpResponseMessage response =
+                await _httpClient.GetAsync(
+                    $"route?drone={Uri.EscapeDataString(droneName)}");
 
-        DroneLogger.Log(
-            $"Control Tower assigned {response?.MaxCheckpoints} checkpoints to {droneName}.");
+            if (!response.IsSuccessStatusCode)
+            {
+                DroneLogger.Log(
+                    $"Control Tower could not find route for {droneName}. " +
+                    $"Status: {(int)response.StatusCode} {response.StatusCode}");
 
-        return response?.MaxCheckpoints;
+                return null;
+            }
+
+            RouteResponse? route =
+                await response.Content.ReadFromJsonAsync<RouteResponse>();
+
+            DroneLogger.Log(
+                $"Control Tower assigned {route?.MaxCheckpoints} checkpoints to {droneName}.");
+
+            return route?.MaxCheckpoints;
+        }
+        
+        catch (HttpRequestException exception)
+        {
+            DroneLogger.Log(
+                $"Route request failed: {exception.Message}");
+
+            return null;
+        }
     }
 
     private class WeatherResponse

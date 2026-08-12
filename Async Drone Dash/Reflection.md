@@ -251,3 +251,15 @@ in the timestamps between checkpoints.
 
 This demonstrated how asynchronously retrieved HTTP data can affect the
 behavior of the application after the request completes.
+
+### Unknown drone handling
+
+The Control Tower was changed to return HTTP 404 when an unknown drone
+requested a route.
+
+The client checked the HTTP status code before trying to deserialize the
+response. When the request failed, it logged a friendly message and
+returned null instead of crashing.
+
+Because no valid route was returned, the drone kept its existing
+MaxCheckpoints value and the simulation could continue.

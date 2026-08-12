@@ -87,12 +87,22 @@ public class ControlTowerServer
             return;
         }
 
-        int checkpoints = droneName switch
+        int? checkpoints = droneName switch
         {
             "Falcon-1" => 5,
             "Raven-2" => 6,
-            _ => 4
+            _ => null
         };
+
+        if (checkpoints == null)
+        {
+            await SendResponseAsync(
+                context,
+                404,
+                new { error = $"Unknown drone: {droneName}" });
+
+            return;
+        }
 
         await SimulateNetworkDelayAsync();
 
