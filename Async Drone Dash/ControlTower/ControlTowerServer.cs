@@ -142,8 +142,7 @@ public class ControlTowerServer
 
     private static async Task SimulateNetworkDelayAsync()
     {
-        int delay =
-            Random.Shared.Next(200, 1000);
+        int delay = 7000;
 
         await Task.Delay(delay);
     }

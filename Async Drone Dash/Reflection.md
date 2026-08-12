@@ -263,3 +263,16 @@ returned null instead of crashing.
 
 Because no valid route was returned, the drone kept its existing
 MaxCheckpoints value and the simulation could continue.
+
+### Timeout handling
+
+The Control Tower was temporarily changed to delay responses beyond the
+HttpClient timeout.
+
+When a request exceeded the configured five-second timeout, the client
+caught the resulting TaskCanceledException and returned null instead of
+crashing.
+
+The drone then kept its existing route and delay values. This allowed the
+simulation to continue even when the external service failed to respond in
+time.

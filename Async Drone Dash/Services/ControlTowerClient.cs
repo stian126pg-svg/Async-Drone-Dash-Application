@@ -17,14 +17,33 @@ public class ControlTowerClient
         DroneLogger.Log(
             "Requesting weather from Control Tower...");
 
-        WeatherResponse? response =
-            await _httpClient.GetFromJsonAsync<WeatherResponse>(
-                "weather");
+        try
+        {
+            WeatherResponse? response =
+                await _httpClient.GetFromJsonAsync<WeatherResponse>(
+                    "weather");
 
-        DroneLogger.Log(
-            $"Control Tower reported weather: {response?.Weather}");
+            DroneLogger.Log(
+                $"Control Tower reported weather: {response?.Weather}");
 
-        return response?.Weather;
+            return response?.Weather;
+        }
+        
+        catch (TaskCanceledException)
+        {
+            DroneLogger.Log(
+                "Weather request timed out.");
+
+            return null;
+        }
+
+        catch (HttpRequestException exception)
+        {
+            DroneLogger.Log(
+                $"Weather request failed: {exception.Message}");
+
+            return null;
+        }
     }
 
     public async Task<int?> GetRouteAsync(string droneName)
@@ -55,7 +74,15 @@ public class ControlTowerClient
 
             return route?.MaxCheckpoints;
         }
-        
+
+        catch (TaskCanceledException)
+        {
+            DroneLogger.Log(
+                $"Route request for {droneName} timed out.");
+
+            return null;
+        }
+
         catch (HttpRequestException exception)
         {
             DroneLogger.Log(
