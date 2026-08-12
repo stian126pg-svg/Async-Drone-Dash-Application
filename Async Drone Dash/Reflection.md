@@ -235,3 +235,19 @@ for the server.
 
 This reduced the total waiting time to approximately the duration of the
 slowest request rather than the combined duration of both requests.
+
+### Using Control Tower data in the simulation
+
+The Control Tower responses were connected to the drone simulation rather
+than only being displayed.
+
+The `/route` response determines the drone's number of checkpoints, while
+the `/weather` response adjusts its delay. Clear weather keeps the original
+delay, wind adds 250 ms, and storm adds 750 ms.
+
+During testing, the Control Tower returned "wind" for Falcon-1. Its original
+500 ms delay was therefore increased to 750 ms, which could also be observed
+in the timestamps between checkpoints.
+
+This demonstrated how asynchronously retrieved HTTP data can affect the
+behavior of the application after the request completes.
