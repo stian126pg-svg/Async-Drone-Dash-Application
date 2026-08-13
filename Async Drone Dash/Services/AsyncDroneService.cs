@@ -7,6 +7,7 @@ public class AsyncDroneService
 {
     public async Task FlyDroneAsync(
         DroneModel drone,
+        int? failAtCheckpoint = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(drone.Name))
@@ -35,6 +36,13 @@ public class AsyncDroneService
              checkpoint <= drone.MaxCheckpoints;
              checkpoint++)
         {
+            if (failAtCheckpoint.HasValue &&
+                checkpoint == failAtCheckpoint.Value)
+            {
+                throw new InvalidOperationException(
+                    $"{drone.Name} suffered a motor failure at checkpoint {checkpoint}!");
+            }
+            
             DroneLogger.Log(
                 $"{drone.Name} → checkpoint {checkpoint}");
 

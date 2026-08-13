@@ -80,7 +80,7 @@ try
 {
     await droneService.FlyDroneAsync(
         falcon,
-        cancellationSource.Token);
+        cancellationToken: cancellationSource.Token);
 
     Console.WriteLine();
     Console.WriteLine("Drone delivery completed!");
