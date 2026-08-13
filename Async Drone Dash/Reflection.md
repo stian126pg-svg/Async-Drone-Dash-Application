@@ -311,3 +311,23 @@ was handled with try/catch.
 
 The drone did not log that it had landed, demonstrating that the operation
 was stopped before normal completion.
+
+### Manual cancellation bonus
+
+The automatic cancellation test was replaced with a manual emergency
+abort.
+
+A background Task listens for the user to press C. When C is pressed,
+the CancellationTokenSource requests cancellation.
+
+The CancellationToken is passed into Task.Delay() during the drone
+flight. When cancellation is requested, the delay stops waiting and an
+OperationCanceledException propagates back to the orchestration code.
+
+During testing, Falcon-1 reached checkpoint 1 before C was pressed.
+The cancellation was handled cleanly and the drone never logged that it
+had landed.
+
+This demonstrated cooperative cancellation: the operation is not
+forcibly terminated from outside, but instead receives a cancellation
+signal and responds to it.

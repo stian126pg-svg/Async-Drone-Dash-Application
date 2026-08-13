@@ -59,8 +59,22 @@ Console.WriteLine();
 using CancellationTokenSource cancellationSource =
     new CancellationTokenSource();
 
-cancellationSource.CancelAfter(
-    TimeSpan.FromSeconds(2));
+Task cancellationTask = Task.Run(() =>
+{
+    Console.WriteLine();
+    Console.WriteLine("Press C to cancel the drone flight");
+
+    while (!cancellationSource.IsCancellationRequested)
+    {
+        ConsoleKeyInfo key = Console.ReadKey(true);
+
+        if (key.Key == ConsoleKey.C)
+        {
+            cancellationSource.Cancel();
+            break;
+        }
+    }
+});
 
 try
 {
@@ -71,10 +85,10 @@ try
     Console.WriteLine();
     Console.WriteLine("Drone delivery completed!");
 }
-
-catch (OperationCanceledException)
+    catch (OperationCanceledException)
 {
     Console.WriteLine();
+    Console.WriteLine("Emergency abort activated!");
     Console.WriteLine("Drone flight cancelled!");
 }
 
