@@ -56,10 +56,27 @@ Console.WriteLine($"Route checkpoints: {falcon.MaxCheckpoints}");
 Console.WriteLine($"Adjusted delay: {falcon.DelayMs} ms");
 Console.WriteLine();
 
-await droneService.FlyDroneAsync(falcon);
+using CancellationTokenSource cancellationSource =
+    new CancellationTokenSource();
 
-Console.WriteLine();
-Console.WriteLine("Drone delivery completed!");
+cancellationSource.CancelAfter(
+    TimeSpan.FromSeconds(2));
+
+try
+{
+    await droneService.FlyDroneAsync(
+        falcon,
+        cancellationSource.Token);
+
+    Console.WriteLine();
+    Console.WriteLine("Drone delivery completed!");
+}
+
+catch (OperationCanceledException)
+{
+    Console.WriteLine();
+    Console.WriteLine("Drone flight cancelled!");
+}
 
 Console.WriteLine();
 Console.WriteLine("Press Enter to stop...");

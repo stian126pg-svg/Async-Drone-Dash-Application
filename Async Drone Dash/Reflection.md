@@ -292,3 +292,22 @@ Exact same pattern as DelayMs used here.
 
 These tests showed that invalid data should be rejected close to where it
 is used instead of relying on lower-level methods to fail unexpectedly.
+
+
+
+### CancellationToken bonus
+
+Cancellation support was added to the asynchronous drone flight using a
+CancellationToken.
+
+The token was passed to Task.Delay(), allowing an in-progress delay to
+respond to cancellation without blocking or forcibly terminating a thread.
+
+For testing, a CancellationTokenSource was configured to request
+cancellation after two seconds. Falcon-1 completed several checkpoints
+before the cancellation was observed, after which an
+OperationCanceledException propagated back to the orchestration code and
+was handled with try/catch.
+
+The drone did not log that it had landed, demonstrating that the operation
+was stopped before normal completion.
