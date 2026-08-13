@@ -2,96 +2,304 @@
 using AsyncDroneDash.Models;
 using AsyncDroneDash.Services;
 
-ControlTowerServer server =
-    new ControlTowerServer("http://localhost:5000/");
+bool running = true;
 
-Task serverTask = server.StartAsync();
-
-await Task.Delay(500);
-
-HttpClient httpClient = new HttpClient
+while (running)
 {
-    BaseAddress = new Uri("http://localhost:5000/"),
-    Timeout = TimeSpan.FromSeconds(5)
-};
+    Console.Clear();
 
-ControlTowerClient towerClient =
-    new ControlTowerClient(httpClient);
+    Console.WriteLine("================================");
+    Console.WriteLine("       ASYNC DRONE DASH");
+    Console.WriteLine("================================");
+    Console.WriteLine();
+    Console.WriteLine("1. Part A - Thread + Join");
+    Console.WriteLine("2. Part B - Async success");
+    Console.WriteLine("3. Part B - Async motor failure");
+    Console.WriteLine("4. Part C - Control Tower API");
+    Console.WriteLine("5. Bonus  - Emergency Abort");
+    Console.WriteLine("0. Exit");
+    Console.WriteLine();
+    Console.Write("Choose an option: ");
 
-AsyncDroneService droneService =
-    new AsyncDroneService();
+    string? choice = Console.ReadLine();
 
-DroneModel falcon = new DroneModel(
-    "Falcon-1",
-    5,
-    500);
+    Console.Clear();
 
-Task<string?> weatherTask =
-    towerClient.GetWeatherAsync();
+    switch (choice)
+    {
+        case "1":
+            RunPartA();
+            break;
 
-Task<int?> routeTask =
-    towerClient.GetRouteAsync(falcon.Name);
+        case "2":
+            await RunPartBSuccessAsync();
+            break; 
 
-await Task.WhenAll(weatherTask, routeTask);
+        case "3":
+            await RunPartBFailureAsync();
+            break;
 
-string? weather = await weatherTask;
-int? checkpoints = await routeTask;
+        case "4":
+            await RunPartCAsync();
+            break;
 
-if (checkpoints.HasValue)
-{
-    falcon.MaxCheckpoints = checkpoints.Value;
+        case "5":
+            Console.WriteLine("Emergency Abort coming next.");
+            Pause();
+            break;
+
+        case "0":
+            running = false;
+            break;
+
+        default:
+            Console.WriteLine("Invalid option.");
+            Pause();
+            break;
+    }
 }
 
-falcon.DelayMs = weather switch
+static void RunPartA()
 {
-    "clear" => falcon.DelayMs,
-    "wind" => falcon.DelayMs + 250,
-    "storm" => falcon.DelayMs + 750,
-    _ => falcon.DelayMs
-};
-
-Console.WriteLine();
-Console.WriteLine($"Weather: {weather}");
-Console.WriteLine($"Route checkpoints: {falcon.MaxCheckpoints}");
-Console.WriteLine($"Adjusted delay: {falcon.DelayMs} ms");
-Console.WriteLine();
-
-using CancellationTokenSource cancellationSource =
-    new CancellationTokenSource();
-
-Task cancellationTask = Task.Run(() =>
-{
+    Console.WriteLine("================================");
+    Console.WriteLine("    PART A - THREAD + JOIN");
+    Console.WriteLine("================================");
     Console.WriteLine();
-    Console.WriteLine("Press C to cancel the drone flight");
 
-    while (!cancellationSource.IsCancellationRequested)
+    DroneModel falcon = new DroneModel(
+        "Falcon-1",
+        5,
+        500);
+
+    DroneModel raven = new DroneModel(
+        "Raven-2",
+        5,
+        700);
+
+    ThreadRaceService service =
+        new ThreadRaceService();
+
+    Thread falconThread = new Thread(() =>
     {
-        ConsoleKeyInfo key = Console.ReadKey(true);
+        service.FlyDrone(falcon);
+    });
 
-        if (key.Key == ConsoleKey.C)
+    Thread ravenThread = new Thread(() =>
+    {
+        service.FlyDrone(raven);
+    });
+
+    falconThread.Start();
+    ravenThread.Start();
+
+    falconThread.Join();
+    ravenThread.Join();
+
+    Console.WriteLine();
+    Console.WriteLine("All drones finished!");
+
+    Pause();
+}
+
+static async Task RunPartBSuccessAsync()
+{
+    Console.WriteLine("================================");
+    Console.WriteLine("    PART B - ASYNC SUCCESS");
+    Console.WriteLine("================================");
+    Console.WriteLine();
+
+    DroneModel falcon = new DroneModel(
+        "Falcon-1",
+        5,
+        500);
+
+    DroneModel raven = new DroneModel(
+        "Raven-2",
+        5,
+        700);
+
+    AsyncDroneService service =
+        new AsyncDroneService();
+
+    Task falconTask =
+        service.FlyDroneAsync(falcon);
+
+    Task ravenTask =
+        service.FlyDroneAsync(raven);
+
+    try
+    {
+        await Task.WhenAll(
+            falconTask,
+            ravenTask);
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "All drones finished successfully!");
+    }
+    catch (Exception exception)
+    {
+        Console.WriteLine();
+        Console.WriteLine(
+            $"Unexpected error: {exception.Message}");
+    }
+
+    Pause();
+}
+
+static async Task RunPartBFailureAsync()
+{
+    Console.WriteLine("================================");
+    Console.WriteLine("   PART B - MOTOR FAILURE");
+    Console.WriteLine("================================");
+    Console.WriteLine();
+
+    DroneModel falcon = new DroneModel(
+        "Falcon-1",
+        5,
+        500);
+
+    DroneModel raven = new DroneModel(
+        "Raven-2",
+        5,
+        700);
+
+    AsyncDroneService service =
+        new AsyncDroneService();
+
+    Task falconTask =
+        service.FlyDroneAsync(falcon);
+
+    Task ravenTask =
+        service.FlyDroneAsync(
+            raven,
+            failAtCheckpoint: 3);
+
+    try
+    {
+        await Task.WhenAll(
+            falconTask,
+            ravenTask);
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "All drones finished successfully!");
+    }
+    catch (InvalidOperationException exception)
+    {
+        Console.WriteLine();
+        Console.WriteLine(
+            "A drone failed!");
+
+        Console.WriteLine(
+            $"Error: {exception.Message}");
+    }
+
+    Pause();
+}
+
+static async Task RunPartCAsync()
+{
+    Console.WriteLine("================================");
+    Console.WriteLine("   PART C - CONTROL TOWER API");
+    Console.WriteLine("================================");
+    Console.WriteLine();
+
+    ControlTowerServer server =
+        new ControlTowerServer("http://localhost:5000/");
+
+    Task serverTask = server.StartAsync();
+
+    try
+    {
+        await Task.Delay(500);
+
+        HttpClient httpClient = new HttpClient
         {
-            cancellationSource.Cancel();
-            break;
+            BaseAddress = new Uri("http://localhost:5000/"),
+            Timeout = TimeSpan.FromSeconds(5)
+        };
+
+        ControlTowerClient towerClient =
+            new ControlTowerClient(httpClient);
+
+        AsyncDroneService droneService =
+            new AsyncDroneService();
+
+        DroneModel falcon = new DroneModel(
+            "Falcon-1",
+            5,
+            500);
+
+        Task<string?> weatherTask =
+            towerClient.GetWeatherAsync();
+
+        Task<int?> routeTask =
+            towerClient.GetRouteAsync(falcon.Name);
+
+        await Task.WhenAll(
+            weatherTask,
+            routeTask);
+
+        string? weather =
+            await weatherTask;
+
+        int? checkpoints =
+            await routeTask;
+
+        if (checkpoints.HasValue)
+        {
+            falcon.MaxCheckpoints =
+                checkpoints.Value;
+        }
+
+        falcon.DelayMs = weather switch
+        {
+            "clear" => falcon.DelayMs,
+            "wind" => falcon.DelayMs + 250,
+            "storm" => falcon.DelayMs + 750,
+            _ => falcon.DelayMs
+        };
+
+        Console.WriteLine();
+        Console.WriteLine(
+            $"Weather: {weather ?? "unavailable"}");
+
+        Console.WriteLine(
+            $"Route checkpoints: {falcon.MaxCheckpoints}");
+
+        Console.WriteLine(
+            $"Adjusted delay: {falcon.DelayMs} ms");
+
+        Console.WriteLine();
+
+        try
+        {
+            await droneService.FlyDroneAsync(falcon);
+
+            Console.WriteLine();
+            Console.WriteLine(
+                "Drone delivery completed!");
+        }
+        catch (Exception exception)
+        {
+            Console.WriteLine();
+            Console.WriteLine(
+                $"Drone delivery failed: {exception.Message}");
         }
     }
-});
+    finally
+    {
+        server.Stop();
+    }
 
-try
-{
-    await droneService.FlyDroneAsync(
-        falcon,
-        cancellationToken: cancellationSource.Token);
-
-    Console.WriteLine();
-    Console.WriteLine("Drone delivery completed!");
-}
-    catch (OperationCanceledException)
-{
-    Console.WriteLine();
-    Console.WriteLine("Emergency abort activated!");
-    Console.WriteLine("Drone flight cancelled!");
+    Pause();
 }
 
-Console.WriteLine();
-Console.WriteLine("Press Enter to stop...");
-Console.ReadLine();
+
+static void Pause()
+{
+    Console.WriteLine();
+    Console.WriteLine("Press Enter to return to the menu...");
+    Console.ReadLine();
+}

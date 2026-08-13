@@ -170,4 +170,15 @@ public class ControlTowerServer
 
         context.Response.Close();
     }
+
+    public void Stop()
+    {
+        if (_listener.IsListening)
+        {
+            _listener.Stop();
+            _listener.Close();
+
+            Console.WriteLine("Control Tower offline.");
+        }
+    }    
 }
