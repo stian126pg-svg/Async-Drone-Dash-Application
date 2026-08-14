@@ -1,333 +1,224 @@
-# Reflection – Async Drone Dash
-
+# Async Drone Dash – Reflection
 
 
 ## Part A – Thread + Join
 
-### Initial observations
-
-The simulator uses a DroneModel to represent each drone. The model contains the drone's name, maximum number of checkpoints, and delay between checkpoints.
-
-A separate DroneLogger class is used to keep console output consistent and to include timestamps. This will make it easier to observe how multiple drones overlap while running concurrently.
-
-### Experiments
-
-The logger was tested with a one-second Thread.Sleep between messages.
-The timestamp showed approximately one second between the messages.
-
 ### What happened when Join was removed?
 
-When `Thread.Join()` was removed, the main thread immediately printed
-"All drones finished!" before the drone had even started its route.
+When `Join()` was removed, the main thread did not wait for the drone
+threads to finish.
 
-The drone continued running afterward and completed all of its
-checkpoints.
+This caused `"All drones finished!"` to sometimes be printed before the
+drones had completed their routes... In fact, it would print before the drones even took off.
 
-This demonstrated that `Thread.Start()` begins the thread independently
-of the main thread. Without `Join()`, the main thread does not wait for
-the drone thread to finish.
+With `Join()`, the main thread waits until both drone threads have completed
+before continuing.
 
-The result can therefore be in an unexpected order because the threads
-are executing independently.
+The output from Falcon-1 and Raven-2 was also "interleaved" and not completely
+deterministic. Both threads wrote to the shared Console, so the exact order
+of messages varied between runs.
 
-### Multiple drones
+This demonstrated that manually working with multiple threads requires
+careful coordination.
 
-Two drones were started on separate threads. Falcon-1 had a delay of
-500 ms per checkpoint, while Raven-2 had a delay of 700 ms.
+---
 
-The drones started almost simultaneously, and their console output was
-interleaved. Falcon-1 generally progressed faster because it had the
-shorter delay and ultimately landed first.
+## Part B – async/await
 
-However, the order of individual log messages was not completely
-predictable. Raven-2 printed its first checkpoint at essentially the
-same time as Falcon-1, and in some cases Raven-2's message appeared
-first.
+The drone flight was rewritten as an asynchronous method using
+`await Task.Delay()` instead of `Thread.Sleep()`.
 
-This demonstrated that the threads execute independently and that
-thread scheduling affects the exact ordering of operations.
+Multiple drone operations could then be started as Tasks and coordinated
+using:
 
-Both Join() calls ensured that the main thread waited for both drones
-before printing "All drones finished!".
+`await Task.WhenAll(...)`
 
-### Removing Join() with multiple drones
+The checkpoint output still overlapped because both drone operations were
+progressing during the same period.
 
-After removing both Join() calls, the main thread printed
-"All drones finished!" immediately, before either drone had completed
-its route.
+Falcon-1 generally completed first because it had a shorter delay, but
+`Task.WhenAll()` did not allow the orchestration to continue normally until
+all drone Tasks had completed.
 
-The drones continued flying afterward.
-
-The experiment was run multiple times. The general progression was
-similar because Falcon-1 had a shorter delay than Raven-2, but the exact
-ordering of messages varied slightly between runs.
-
-For example, the order in which the launch messages appeared was not
-always the same as the timestamps themselves. Some messages also had
-nearly identical timestamps.
-
-This showed that console output from multiple threads can become
-interleaved and that the exact execution order should not be relied
-upon.
-
-Without Join(), the main thread has no synchronization point requiring
-it to wait for the drone threads. Therefore, "All drones finished!"
-does not actually mean that the drones have finished; it only means
-that the main thread reached that statement.
-
-
-
-## Part B – Task + TaskCompletionSource
-
-### Initial observations
-
-Part B replaces the direct use of Thread.Join() with a Task that
-represents the completion of the drone's work.
-
-TaskCompletionSource is used to control when the Task completes.
-SetResult() is called when the drone successfully finishes its route,
-while SetException() can be used when the drone encounters an error.
-
-The initial implementation still uses a Thread to perform the actual
-work, but the TaskCompletionSource provides a Task-based way for other
-code to observe when the operation has completed.
-
-### Task.WhenAll with multiple drones
-
-Two drone Tasks were started and combined with Task.WhenAll().
-
-Falcon-1 finished before Raven-2 because it had a shorter delay, but
-the combined Task did not complete until both drone Tasks were finished.
-
-This showed that Task.WhenAll() can be used to coordinate several
-independent operations without manually joining each thread.
-
-Compared with Thread.Join(), the code is beginning to focus more on
-waiting for work to complete rather than directly managing the threads
-performing that work.
-
-### Failure propagation with TaskCompletionSource
+### Error propagation
 
 A simulated motor failure was added to Raven-2 at checkpoint 3.
 
-When the exception was thrown, TaskDroneService caught it and passed it
-to TaskCompletionSource.SetException(). This caused Raven-2's Task to
-become faulted.
+When Raven-2 threw an `InvalidOperationException`, its Task became faulted.
+Falcon-1 was not automatically cancelled and continued until its own route
+was complete.
 
-Falcon-1 was not automatically stopped by Raven-2's failure and
-continued until it completed its route.
+The exception then propagated through `await Task.WhenAll()` and could be
+handled using a normal `try/catch`.
 
-Task.WhenAll() did not finish until the remaining Falcon-1 Task was also
-complete. The combined Task then completed in a faulted state.
+During an earlier experiment using `.Wait()`, the exception was wrapped in
+an `AggregateException`. Using `await` exposed the original exception more
+naturally and made the error handling a lot easier to understand.
 
-Because Program.cs used Task.Wait() without a try/catch, the failure was
-reported as an AggregateException and terminated the application. The
-original InvalidOperationException was visible as the inner exception.
+### Thread + Join compared with async/await
 
-### Handling Task failures
+The Thread version required manually creating threads, starting them and
+calling `Join()` to see them to their completion.
 
-The call to Task.WhenAll() was wrapped in a try/catch.
+The async version represented the operations using Tasks and coordinated
+them using `await Task.WhenAll()`.
 
-Because the program currently uses Task.Wait(), failures are exposed as
-an AggregateException. The InnerExceptions collection can be inspected
-to retrieve the original error from the failed drone.
+This required less orchestration code and made the intent of the
+program easier and smoother to read.
 
-This allowed the application to report Raven-2's simulated motor failure
-without terminating with an unhandled exception.
+For operations that spend time waiting, such as delays or HTTP requests,
+async/await also avoids occupying a thread simply to wait for the operation
+to finish.
 
-This also showed that Tasks provide more information about the outcome
-of an operation than directly managing threads. A Task can represent
-successful completion, failure, or cancellation.
+Overall? The async version was easier to read, compose and maintain.
 
-### Multiple failures
-
-A second simulated motor failure was temporarily added so both drones
-would fail.
-
-Task.WhenAll() completed as faulted and AggregateException contained
-both original exceptions. This demonstrated why AggregateException can
-be useful when several concurrent Tasks fail.
-
-The order of the reported exceptions should not be assumed to represent
-the exact chronological order in which the failures occurred.
-
-### Multiple drones with async/await
-
-Falcon-1 and Raven-2 were started as separate asynchronous operations
-and coordinated using await Task.WhenAll().
-
-Their checkpoint output overlapped, showing that both drone operations
-were making progress during the same period.
-
-Falcon-1 still completed first because it had the shorter delay, but
-the program did not continue past Task.WhenAll() until Raven-2 had also
-finished.
-
-Compared with Thread + Join, the async version required much less
-manual coordination code and was easier to read because the program
-focused on the operations being performed rather than directly managing
-threads.
-
-### Error propagation with async/await
-
-A simulated motor failure was added to Raven-2 at checkpoint 3.
-
-When Raven-2 threw an InvalidOperationException, its Task became faulted.
-Falcon-1 was not automatically cancelled and continued until it completed
-its route.
-
-await Task.WhenAll() did not continue normally because one of the Tasks
-had failed. After the remaining Task completed, the original
-InvalidOperationException was propagated back to the orchestration code.
-
-This differed from using Task.Wait(), where the failure was wrapped in
-an AggregateException. With await, the original exception was much easier
-to handle directly.
-
-### Comparison with Thread + Join
-
-The async/await version required less manual coordination than the
-Thread + Join version.
-
-With Thread, the program had to explicitly create threads, start them,
-and call Join() to wait for completion.
-
-With async/await, each drone operation returned a Task, and
-Task.WhenAll() was used to coordinate them. This made the orchestration
-code shorter and easier to follow.
-
-Error handling was also easier with async/await because exceptions
-propagated through the Task and could be handled with a normal try/catch
-around await Task.WhenAll().
-
-Overall, the async version focused more on the work being performed and
-less on directly managing threads, which should make the code easier to
-maintain.
-
-
+---
 
 ## Part C – Control Tower API
 
-### First asynchronous HTTP request
+I decided to implement the optional local Control Tower using `HttpListener`.
 
-A local Control Tower API was created using HttpListener. The first
-endpoint tested with HttpClient was `/weather`.
+The server exposes two endpoints:
 
-The client used GetFromJsonAsync() to asynchronously request the weather
-and deserialize the JSON response into a C# object.
+- `/weather`
+- `/route?drone=Name`
 
-The server included a random artificial delay between 200 and 1000 ms.
-Timestamps in the client output made this delay visible. While waiting
-for the HTTP response, the application used await rather than
-synchronously blocking a thread.
+The weather endpoint returns `clear`, `wind` or `storm`.
 
-A five-second HttpClient timeout was also configured so the client would
-not wait indefinitely if the Control Tower failed to respond.
+The route endpoint returns the number of checkpoints assigned to a known
+drone.
 
-### Sequential vs concurrent HTTP calls
+Artificial network delay was added to the server so that asynchronous HTTP
+behavior could be observed more clearly.
 
-The weather and route requests were first awaited sequentially, meaning
-the second request did not begin until the first had completed.
+### HttpClient
 
-They were then started together and coordinated with Task.WhenAll().
-Because the requests were independent, they could overlap while waiting
-for the server.
+The client communicates with the Control Tower using `HttpClient`.
 
-This reduced the total waiting time to approximately the duration of the
-slowest request rather than the combined duration of both requests.
+The HTTP calls are asynchronous and the JSON responses are deserialized
+into C# objects.
 
-### Using Control Tower data in the simulation
+The weather and route requests are independent, so they were started
+together and coordinated with `Task.WhenAll()`.
 
-The Control Tower responses were connected to the drone simulation rather
-than only being displayed.
+When they were "awaited" sequentially, the second request did not begin until
+the first had completed. When they were started together, their waiting time
+could overlap and the total time was approximately determined by the slower
+request instead of the sum of both delays.
 
-The `/route` response determines the drone's number of checkpoints, while
-the `/weather` response adjusts its delay. Clear weather keeps the original
-delay, wind adds 250 ms, and storm adds 750 ms.
+### External data affecting the simulation
 
-During testing, the Control Tower returned "wind" for Falcon-1. Its original
-500 ms delay was therefore increased to 750 ms, which could also be observed
-in the timestamps between checkpoints.
+The HTTP responses were connected to the drone simulation rather than only
+being displayed.
 
-This demonstrated how asynchronously retrieved HTTP data can affect the
-behavior of the application after the request completes.
+The route response determines `MaxCheckpoints`.
 
-### Unknown drone handling
+Weather changes the drone delay:
 
-The Control Tower was changed to return HTTP 404 when an unknown drone
-requested a route.
+- clear: no additional delay
+- wind: +250 ms
+- storm: +750 ms
 
-The client checked the HTTP status code before trying to deserialize the
-response. When the request failed, it logged a friendly message and
-returned null instead of crashing.
+For example, when Falcon-1 received storm weather, its normal 500 ms delay
+became 1250 ms. This difference was visible in the timestamps between
+checkpoints.
 
-Because no valid route was returned, the drone kept its existing
-MaxCheckpoints value and the simulation could continue.
+This demonstrated how data retrieved asynchronously from another service
+can affect application behavior.
 
-### Timeout handling
+### HTTP errors and timeouts
 
-The Control Tower was temporarily changed to delay responses beyond the
-HttpClient timeout.
+The Control Tower returns HTTP 404 when an unknown drone requests a route
+and HTTP 400 when required route information is missing.
 
-When a request exceeded the configured five-second timeout, the client
-caught the resulting TaskCanceledException and returned null instead of
-crashing.
+The client checks for failed HTTP responses and returns a fallback value
+instead of allowing the application to crash.
 
-The drone then kept its existing route and delay values. This allowed the
-simulation to continue even when the external service failed to respond in
-time.
+`HttpClient` also has a five-second timeout.
 
-### Invalid drone parameters
+During testing, the server was deliberately changed to respond after 7
+seconds. Both HTTP requests timed out, but the exceptions were handled and
+the drone kept to its existing route and delay values.
+
+This allowed the simulation to continue even when the Control Tower was
+unavailable or too slow.
+
+### Invalid drone data
 
 Validation was added before an asynchronous drone flight begins.
 
-A negative DelayMs produced an ArgumentOutOfRangeException with a clear
-error message, while an empty drone name produced an ArgumentException.
+An empty drone name is rejected with an `ArgumentException`.
 
-The empty-name test also caused the Control Tower route endpoint to return
-HTTP 400 Bad Request before the drone flight was attempted.
+Negative checkpoint or delay values are rejected with
+`ArgumentOutOfRangeException`.
 
-MaxCheckpoints < 0 also gave us the expected "Max checkpoints cannot be negative."
-Exact same pattern as DelayMs used here.
+This prevents "invalid state" from reaching the actual flight logic.
 
-These tests showed that invalid data should be rejected close to where it
-is used instead of relying on lower-level methods to fail unexpectedly.
+---
 
+## Bonus – CancellationToken
 
+Cancellation support was added using `CancellationTokenSource` and
+`CancellationToken`.
 
-### CancellationToken bonus
+The same cancellation token can be supplied to multiple drone Tasks.
 
-Cancellation support was added to the asynchronous drone flight using a
-CancellationToken.
+During the emergency-abort demonstration, Falcon-1 and Raven-2 fly
+concurrently while another Task listens for the user to press `C`.
 
-The token was passed to Task.Delay(), allowing an in-progress delay to
-respond to cancellation without blocking or forcibly terminating a thread.
+Pressing `C` calls `Cancel()` on the shared `CancellationTokenSource`.
 
-For testing, a CancellationTokenSource was configured to request
-cancellation after two seconds. Falcon-1 completed several checkpoints
-before the cancellation was observed, after which an
-OperationCanceledException propagated back to the orchestration code and
-was handled with try/catch.
+The token is passed to `Task.Delay()` inside the drone flight. When
+cancellation is requested, the asynchronous delay responds by throwing an
+`OperationCanceledException`.
 
-The drone did not log that it had landed, demonstrating that the operation
-was stopped before normal completion.
+The orchestration catches this exception and reports that all active drone
+flights were cancelled.
 
-### Manual cancellation bonus
+Neither drone will report that they landed after the cancellation.
 
-The automatic cancellation test was replaced with a manual emergency
-abort.
+This demonstrated cooperative cancellation: the Tasks are not forcibly
+terminated. Instead, cancellation is requested and the asynchronous
+operations cooperate with that request.
 
-A background Task listens for the user to press C. When C is pressed,
-the CancellationTokenSource requests cancellation.
+---
 
-The CancellationToken is passed into Task.Delay() during the drone
-flight. When cancellation is requested, the delay stops waiting and an
-OperationCanceledException propagates back to the orchestration code.
+## Two problems caused by blocking asynchronous code
 
-During testing, Falcon-1 reached checkpoint 1 before C was pressed.
-The cancellation was handled cleanly and the drone never logged that it
-had landed.
+### 1. Blocking a UI or request thread
 
-This demonstrated cooperative cancellation: the operation is not
-forcibly terminated from outside, but instead receives a cancellation
-signal and responds to it.
+Using `.Wait()` or `.Result` can block the thread that is responsible for
+processing other work.
+
+In a UI application this can make the interface freeze. In a server
+application it can reduce the number of requests the application can handle
+efficiently.
+
+### 2. Deadlocks and unnecessary resource usage
+
+Blocking while waiting for asynchronous work can contribute to deadlocks in
+environments with a synchronization context.
+
+Even when a deadlock does not occur, blocking wastes a thread that could
+otherwise perform useful work.
+
+For asynchronous workflows it is therefore generally better to propagate
+async upward and use `await`.
+
+---
+
+## Final thoughts
+
+The biggest difference I observed was that Thread-based code required me to
+think much more directly about the threads themselves.
+
+With async/await, I could focus more on the operations I wanted to perform
+and how they should be coordinated.
+
+The HTTP section made this especially clear because waiting for external
+data is a natural use case for asynchronous programming.
+
+The project also demonstrated that asynchronous programming involves more
+than simply adding `async` and `await`. Error propagation, timeouts,
+resource cleanup, validation and cancellation all need to be considered
+when building a reliable asynchronous application.

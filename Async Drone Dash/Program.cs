@@ -44,8 +44,7 @@ while (running)
             break;
 
         case "5":
-            Console.WriteLine("Emergency Abort coming next.");
-            Pause();
+            await RunEmergencyAbortAsync();
             break;
 
         case "0":
@@ -58,6 +57,7 @@ while (running)
             break;
     }
 }
+
 
 static void RunPartA()
 {
@@ -100,6 +100,7 @@ static void RunPartA()
 
     Pause();
 }
+
 
 static async Task RunPartBSuccessAsync()
 {
@@ -146,6 +147,7 @@ static async Task RunPartBSuccessAsync()
 
     Pause();
 }
+
 
 static async Task RunPartBFailureAsync()
 {
@@ -197,6 +199,7 @@ static async Task RunPartBFailureAsync()
 
     Pause();
 }
+
 
 static async Task RunPartCAsync()
 {
@@ -291,6 +294,81 @@ static async Task RunPartCAsync()
     finally
     {
         server.Stop();
+    }
+
+    Pause();
+}
+
+
+static async Task RunEmergencyAbortAsync()
+{
+    Console.WriteLine("================================");
+    Console.WriteLine("    BONUS - EMERGENCY ABORT");
+    Console.WriteLine("================================");
+    Console.WriteLine();
+
+    DroneModel falcon = new DroneModel(
+        "Falcon-1",
+        10,
+        750);
+
+    DroneModel raven = new DroneModel(
+        "Raven-2",
+        10,
+        900);
+
+    AsyncDroneService service =
+        new AsyncDroneService();
+
+    using CancellationTokenSource cancellationSource =
+        new CancellationTokenSource();
+
+    Console.WriteLine("Press C to cancel all drone flights.");
+    Console.WriteLine();
+
+    Task cancellationTask = Task.Run(() =>
+    {
+        while (!cancellationSource.IsCancellationRequested)
+        {
+            ConsoleKeyInfo key =
+                Console.ReadKey(true);
+
+            if (key.Key == ConsoleKey.C)
+            {
+                cancellationSource.Cancel();
+                break;
+            }
+        }
+    });
+
+    Task falconTask =
+        service.FlyDroneAsync(
+            falcon,
+            cancellationToken: cancellationSource.Token);
+
+    Task ravenTask =
+        service.FlyDroneAsync(
+            raven,
+            cancellationToken: cancellationSource.Token);
+
+    try
+    {
+        await Task.WhenAll(
+            falconTask,
+            ravenTask);
+
+        Console.WriteLine();
+        Console.WriteLine(
+            "All drone deliveries completed!");
+    }
+    catch (OperationCanceledException)
+    {
+        Console.WriteLine();
+        Console.WriteLine(
+            "EMERGENCY ABORT ACTIVATED!");
+
+        Console.WriteLine(
+            "All active drone flights cancelled.");
     }
 
     Pause();
