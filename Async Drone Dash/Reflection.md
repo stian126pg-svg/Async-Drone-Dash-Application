@@ -40,6 +40,21 @@ Falcon-1 generally completed first because it had a shorter delay, but
 `Task.WhenAll()` did not allow the orchestration to continue normally until
 all drone Tasks had completed.
 
+### Exception handling in Thread vs Task
+
+I tried to throw a deliberate exception inside one of the raw Threads in Part A.
+
+Unlike a Task, the Thread did not store the exception so that it could later
+be observed through Join(). The exception remained unhandled on that thread
+and caused the application to terminate.
+
+In the async version, exceptions are captured by the Task and propagate
+through await, which allows the orchestration code to handle them with a
+normal try/catch.
+
+This made Task-based error handling easier to coordinate than raw Thread
+exceptions.
+
 ### Error propagation
 
 A simulated motor failure was added to Raven-2 at checkpoint 3.
